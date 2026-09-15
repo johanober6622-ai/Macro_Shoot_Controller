@@ -16,8 +16,11 @@ constexpr int CAMERA_SETTLE_MS = 2000;
 constexpr int SLOW_SPEED = 100;
 constexpr int FAST_SPEED = 400;
 constexpr int LONG_MOVE_STEPS = 3200;
+constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 
-ControllerSettings settings = {0.4f, 2.1f, 5.6f, 0.1f, 55, 1000, 5, 22, 18, false, false, true};
+ControllerSettings settings = {
+    0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 200.0f, 4.0f, 50.0f, 50.0f,
+    55, 1000, 5, 22, 18, false, OPTICAL_MACRO_LENS, 0};
 ControllerStatus status = {CONTROLLER_IDLE, 0, 0, 0, 0, ""};
 ControllerState state = CONTROLLER_IDLE;
 unsigned long stateStartedAt = 0;
@@ -141,27 +144,38 @@ void controllerBegin()
 
 void controllerRecalculate()
 {
-    settings.magnification = clampFloat(settings.magnification, 0.1f, 20.0f);
-    settings.fStop = clampFloat(settings.fStop, 0.1f, 64.0f);
+    settings.macroMagnification = clampFloat(settings.macroMagnification, 0.1f, 20.0f);
+    settings.aperture = clampFloat(settings.aperture, 0.1f, 64.0f);
     settings.numericalAperture = clampFloat(settings.numericalAperture, 0.01f, 1.0f);
+    settings.objectiveBaseTubeLength = clampFloat(settings.objectiveBaseTubeLength, 10.01f, 1000.0f);
+    settings.objectiveActualTubeLength = clampFloat(settings.objectiveActualTubeLength, 10.01f, 1000.0f);
+    settings.objectiveDesignMagnification = clampFloat(settings.objectiveDesignMagnification, 0.1f, 100.0f);
+    settings.reverseFrontFocalLength = clampFloat(settings.reverseFrontFocalLength, 0.1f, 1000.0f);
+    settings.reverseRearFocalLength = clampFloat(settings.reverseRearFocalLength, 0.1f, 1000.0f);
+    settings.sensorType = clampInt(settings.sensorType, 0, 2);
     settings.stepsPerMicron = clampFloat(settings.stepsPerMicron, 0.01f, 100.0f);
     settings.shootDistance = clampInt(settings.shootDistance, MIN_DISTANCE, MAX_DISTANCE);
     settings.delaySeconds = clampInt(settings.delaySeconds, MIN_DELAY, MAX_DELAY);
 
-    float dof;
-    if (settings.objectiveMode)
+    float calculationMagnification = settings.macroMagnification;
+    if (settings.opticalMode == OPTICAL_OBJECTIVE_LENS)
     {
-        dof = 0.55f / (settings.numericalAperture * settings.numericalAperture);
+        calculationMagnification = settings.objectiveDesignMagnification *
+            (settings.objectiveActualTubeLength - 10.0f) /
+            (settings.objectiveBaseTubeLength - 10.0f);
+        calculationMagnification = clampFloat(calculationMagnification, 0.1f, 100.0f);
     }
-    else if (settings.frontAperture)
+    else if (settings.opticalMode == OPTICAL_REVERSE_LENS)
     {
-        dof = 2.2f * settings.fStop * settings.fStop;
+        calculationMagnification = settings.reverseRearFocalLength /
+            settings.reverseFrontFocalLength;
     }
-    else
-    {
-        dof = (2.2f * settings.fStop * settings.fStop) /
-              (settings.magnification * settings.magnification);
-    }
+
+    settings.magnification = calculationMagnification;
+    settings.effectiveAperture = settings.aperture * (calculationMagnification + 1.0f);
+    float circleOfConfusion = SENSOR_CIRCLE_OF_CONFUSION[settings.sensorType];
+    float dof = 2.0f * circleOfConfusion * settings.effectiveAperture /
+                (calculationMagnification * calculationMagnification) * 1000.0f;
 
     settings.depthOfField = clampInt(static_cast<int>(dof), 1, 1000000);
     updateShotCount();
@@ -215,13 +229,13 @@ void controllerSetStepsPerMicron(float value)
 
 void controllerSetMagnification(float value)
 {
-    settings.magnification = value;
+    settings.macroMagnification = value;
     controllerRecalculate();
 }
 
-void controllerSetFStop(float value)
+void controllerSetAperture(float value)
 {
-    settings.fStop = value;
+    settings.aperture = value;
     controllerRecalculate();
 }
 
@@ -231,21 +245,51 @@ void controllerSetNumericalAperture(float value)
     controllerRecalculate();
 }
 
+void controllerSetObjectiveBaseTubeLength(float value)
+{
+    settings.objectiveBaseTubeLength = value;
+    controllerRecalculate();
+}
+
+void controllerSetObjectiveActualTubeLength(float value)
+{
+    settings.objectiveActualTubeLength = value;
+    controllerRecalculate();
+}
+
+void controllerSetObjectiveDesignMagnification(float value)
+{
+    settings.objectiveDesignMagnification = value;
+    controllerRecalculate();
+}
+
+void controllerSetReverseFrontFocalLength(float value)
+{
+    settings.reverseFrontFocalLength = value;
+    controllerRecalculate();
+}
+
+void controllerSetReverseRearFocalLength(float value)
+{
+    settings.reverseRearFocalLength = value;
+    controllerRecalculate();
+}
+
 void controllerSetStepsMode(bool enabled)
 {
     settings.stepsMode = enabled;
     controllerRecalculate();
 }
 
-void controllerSetObjectiveMode(bool enabled)
+void controllerSetOpticalMode(OpticalMode mode)
 {
-    settings.objectiveMode = enabled;
+    settings.opticalMode = mode;
     controllerRecalculate();
 }
 
-void controllerSetFrontAperture(bool enabled)
+void controllerSetSensorType(int value)
 {
-    settings.frontAperture = enabled;
+    settings.sensorType = value;
     controllerRecalculate();
 }
 

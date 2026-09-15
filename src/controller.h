@@ -15,19 +15,32 @@ enum ControllerState {
     CONTROLLER_ERROR
 };
 
+enum OpticalMode {
+    OPTICAL_MACRO_LENS,
+    OPTICAL_OBJECTIVE_LENS,
+    OPTICAL_REVERSE_LENS
+};
+
 struct ControllerSettings {
     float stepsPerMicron;
     float magnification;
-    float fStop;
+    float macroMagnification;
+    float aperture;
+    float effectiveAperture;
     float numericalAperture;
+    float objectiveBaseTubeLength;
+    float objectiveActualTubeLength;
+    float objectiveDesignMagnification;
+    float reverseFrontFocalLength;
+    float reverseRearFocalLength;
     int depthOfField;
     int shootDistance;
     int delaySeconds;
     int stepsPerShot;
     int totalShots;
     bool stepsMode;
-    bool objectiveMode;
-    bool frontAperture;
+    OpticalMode opticalMode;
+    int sensorType;
 };
 
 struct ControllerStatus {
@@ -49,11 +62,16 @@ void controllerSetDistance(int value);
 void controllerSetDelay(int value);
 void controllerSetStepsPerMicron(float value);
 void controllerSetMagnification(float value);
-void controllerSetFStop(float value);
+void controllerSetAperture(float value);
 void controllerSetNumericalAperture(float value);
+void controllerSetObjectiveBaseTubeLength(float value);
+void controllerSetObjectiveActualTubeLength(float value);
+void controllerSetObjectiveDesignMagnification(float value);
+void controllerSetReverseFrontFocalLength(float value);
+void controllerSetReverseRearFocalLength(float value);
 void controllerSetStepsMode(bool enabled);
-void controllerSetObjectiveMode(bool enabled);
-void controllerSetFrontAperture(bool enabled);
+void controllerSetOpticalMode(OpticalMode mode);
+void controllerSetSensorType(int value);
 void controllerRecalculate();
 
 bool controllerStartRun();
