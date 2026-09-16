@@ -15,6 +15,7 @@ constexpr int SHUTTER_PULSE_MS = 500;
 constexpr int CAMERA_SETTLE_MS = 2000;
 constexpr int SLOW_SPEED = 100;
 constexpr int FAST_SPEED = 400;
+constexpr int TRAVEL_TEST_SPEED = 800;
 constexpr int LONG_MOVE_STEPS = 3200;
 constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 
@@ -172,7 +173,9 @@ void controllerRecalculate()
     }
 
     settings.magnification = calculationMagnification;
-    settings.effectiveAperture = settings.aperture * (calculationMagnification + 1.0f);
+    settings.effectiveAperture = settings.opticalMode == OPTICAL_OBJECTIVE_LENS
+        ? calculationMagnification / (2.0f * settings.numericalAperture)
+        : settings.aperture * (calculationMagnification + 1.0f);
     float circleOfConfusion = SENSOR_CIRCLE_OF_CONFUSION[settings.sensorType];
     float dof = 2.0f * circleOfConfusion * settings.effectiveAperture /
                 (calculationMagnification * calculationMagnification) * 1000.0f;
@@ -359,6 +362,19 @@ bool controllerStartManualMove(int direction, const char *speedMode)
     }
     manualMoveSteps = direction < 0 ? -steps : steps;
     beginMove(direction < 0 ? -steps : steps, speed, CONTROLLER_MANUAL_MOVE);
+    return true;
+}
+
+bool controllerStartTravelTest(int direction, float distanceMm)
+{
+    if (isBusy() || distanceMm <= 0.0f || !isfinite(distanceMm)) return false;
+
+    controllerRecalculate();
+    long steps = lroundf(distanceMm * 1000.0f * settings.stepsPerMicron);
+    if (steps <= 0) return false;
+
+    manualMoveSteps = direction < 0 ? -steps : steps;
+    beginMove(manualMoveSteps, TRAVEL_TEST_SPEED, CONTROLLER_MANUAL_MOVE);
     return true;
 }
 

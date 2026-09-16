@@ -77,6 +77,7 @@ void controllerRecalculate();
 bool controllerStartRun();
 void controllerStop();
 bool controllerStartManualMove(int direction, const char *speedMode);
+bool controllerStartTravelTest(int direction, float distanceMm);
 void controllerCameraTest();
 void controllerClearEndpoints();
 void controllerSaveEndpointStart();

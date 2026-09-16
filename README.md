@@ -1,46 +1,92 @@
 # MacroController
 
-This is a simple focus-stacking controller built around an ESP32 CYD board. It moves a camera rail with a stepper motor, triggers the camera, and lets you control the setup from a browser.
+MacroController is an ESP32 focus-stacking controller for a motorized camera rail. It calculates a depth of field, moves a stepper motor between shots, triggers the camera, and provides a browser-based control panel. The TFT displays status and the controller address; configuration and controls are available in the web interface.
 
-## Requirements
+## Hardware
 
-- ESP32 CYD board
-- Stepper driver and motor
-- Camera trigger wiring
-- 240 x 320 TFT display for status
-- VS Code with PlatformIO
-- USB cable
+- ESP32 CYD board (the PlatformIO target is `esp32dev`)
+- Stepper motor and compatible driver
+- Motorized camera rail
+- Camera trigger input and compatible trigger cable
+- CYD 240 x 320 TFT display
+- USB cable for programming and serial diagnostics
 
-## Setup
+### GPIO assignments
 
-1. Open this project in VS Code.
-2. Install PlatformIO if needed.
-3. Edit [src/secrets.h](src/secrets.h) and add your Wi‑Fi name and password.
-4. Connect the ESP32 CYD to your computer.
-5. Build and upload the firmware.
-6. Open the serial monitor at 115200 baud.
-7. Use the web address shown there to open the controller in a browser.
+| Function | ESP32 GPIO |
+| --- | ---: |
+| Camera trigger | 27 |
+| Stepper pulse | 23 |
+| Stepper direction | 18 |
+| Stepper enable | 19 |
+| TFT backlight | 21 |
 
-## Wi‑Fi
+The motor enable output is active-low. Confirm the driver's enable polarity and logic levels before connecting the motor.
 
-The controller will try to connect to your Wi‑Fi. If it cannot, it can fall back to its own access point.
+## Build and upload
 
-Keep your Wi‑Fi settings in [src/secrets.h](src/secrets.h), and do not commit real credentials to Git.
+1. Open the project in VS Code with PlatformIO installed.
+2. Copy [src/secrets.h.example](src/secrets.h.example) to `src/secrets.h`.
+3. Set the Wi-Fi and fallback access-point values in `src/secrets.h`.
+4. Connect the ESP32 by USB.
+5. Run **PlatformIO: Build**, then **PlatformIO: Upload**.
+6. Open the serial monitor at `115200` baud.
 
-## Basic use
+The firmware starts the web server during boot and prints its URL to the serial monitor. The same address is shown on the TFT.
 
-1. Open the web interface.
-2. Set the focus-stacking values.
-3. Choose the movement mode and delay.
-4. Jog the rail to check direction and travel.
-5. Test the camera trigger with the camera disconnected.
-6. Start the run when everything looks correct.
+## Network setup
 
-The device will move the rail and trigger the camera at the right intervals during the stack.
+By default, the controller joins the configured Wi-Fi network using DHCP. Optional static-IP settings are available in `src/secrets.h`.
 
-## Notes
+If the station connection fails, or `WIFI_FORCE_AP` is set to `1`, the controller starts a fallback access point:
 
-- The TFT is only for status; the main controls are in the browser.
-- This project is designed around the ESP32 CYD.
-- Check motor direction, enable polarity, and trigger wiring before a full run.
-- Keep the rail and camera isolated until you are happy with the movement and timing.
+- SSID: `MacroController`
+- Password: `macrocontrol`
+- Address: `http://192.168.4.1/`
+
+Connect a phone or computer to that access point and open the address above. Keep real Wi-Fi credentials out of version control.
+
+## Web interface
+
+The web interface updates every 500 ms and provides:
+
+- Start and stop controls for a stacking run
+- Camera trigger test
+- Slow step, fast, and long manual movement in both directions
+- Distance mode, which calculates shots from the configured travel distance
+- Start/stop mode, which calculates shots from recorded rail endpoints
+- Macro lens, objective lens, and reverse lens calculation modes
+- Sensor type, aperture, magnification, numerical aperture, tube length, focal length, and delay settings
+- Live state, remaining shots, distance travelled, depth of field, and calculated steps per shot
+
+### Distance mode
+
+Set the travel distance, calibration value in steps per micrometer, optical values, and delay. The controller calculates the number of shots and returns the rail to its starting position when the run finishes.
+
+### Start/stop mode
+
+1. Select **Start / stop** mode.
+2. Use the jog controls to move to the first endpoint.
+3. Select **Save start**.
+4. Jog to the second endpoint.
+5. Select **Save end + return**. The controller records the travel and returns to the start.
+6. Start the run.
+
+## Operating checklist
+
+1. Test movement with the camera and subject clear of the rail.
+2. Confirm forward and reverse directions.
+3. Verify the driver enable behavior and the rail's usable travel.
+4. Test the camera trigger with the camera disconnected or protected from unintended exposure.
+5. Check the calculated shot count and delay.
+6. Start the capture only after the rail, camera, and subject are secure.
+
+The TFT is a status display only. Use the browser interface for setup and control.
+
+## Project layout
+
+- `src/main.cpp` - Arduino setup and main loop
+- `src/controller.*` - motion, capture state machine, and focus-stack calculations
+- `src/web_server.*` - Wi-Fi setup and browser interface
+- `src/display.*` - TFT status display
+- `src/SpeedyStepper.*` - stepper motion support
