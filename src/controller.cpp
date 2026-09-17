@@ -494,6 +494,7 @@ void controllerTick()
         if (processMovement())
         {
             enableMotor(false);
+            status.captureSequenceActive = false;
             setState(CONTROLLER_IDLE);
         }
         break;
