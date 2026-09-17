@@ -101,36 +101,11 @@ void updateShotCount()
         return;
     }
 
-    int intervals = settings.totalShots - 1;
-    float moveSeconds = 0.0f;
-    if (settings.stepsMode)
-    {
-        long endpointSteps = labs(endpointDistanceSteps);
-        if (intervals > 0)
-        {
-            float averageMoveSteps = static_cast<float>(endpointSteps) / intervals;
-            moveSeconds = intervals * (averageMoveSteps < SLOW_SPEED
-                ? 2.0f * sqrtf(averageMoveSteps / SLOW_SPEED)
-                : averageMoveSteps / SLOW_SPEED + 1.0f);
-        }
-        moveSeconds += endpointSteps < SLOW_SPEED
-            ? 2.0f * sqrtf(static_cast<float>(endpointSteps) / SLOW_SPEED)
-            : static_cast<float>(endpointSteps) / SLOW_SPEED + 1.0f;
-    }
-    else
-    {
-        float shotMoveSeconds = settings.stepsPerShot < SLOW_SPEED
-            ? 2.0f * sqrtf(static_cast<float>(settings.stepsPerShot) / SLOW_SPEED)
-            : static_cast<float>(settings.stepsPerShot) / SLOW_SPEED + 1.0f;
-        long returnMoveSteps = static_cast<long>(settings.totalShots) * settings.stepsPerShot;
-        float returnMoveSeconds = returnMoveSteps < SLOW_SPEED
-            ? 2.0f * sqrtf(static_cast<float>(returnMoveSteps) / SLOW_SPEED)
-            : static_cast<float>(returnMoveSteps) / SLOW_SPEED + 1.0f;
-        moveSeconds = settings.totalShots * shotMoveSeconds + returnMoveSeconds;
-    }
-    settings.estimatedSequenceSeconds = static_cast<int>(ceilf(
-        settings.totalShots * (SHUTTER_PULSE_MS / 1000.0f) +
-        intervals * settings.delaySeconds + moveSeconds));
+    float moveSecondsPerFrame = static_cast<float>(settings.stepsPerShot) / SLOW_SPEED;
+    settings.estimatedSequenceSeconds = static_cast<int>(ceilf(settings.totalShots * (
+        SHUTTER_PULSE_MS / 1000.0f +
+        settings.delaySeconds +
+        moveSecondsPerFrame)));
 }
 
 long nextEndpointMove()

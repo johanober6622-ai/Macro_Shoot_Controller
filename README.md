@@ -76,6 +76,7 @@ The controller calculates the capture spacing from the selected optical mode. In
 | Motor steps per shot | $Steps_{shot} = \lfloor Step_{\mu m} \times S \rfloor$ | Multiply the calculated step length in micrometers by the configured motor calibration ($S$, steps per micrometer). The result is limited to $1$ through $1,000,000$ motor steps. |
 | Capture frames: Stacking Distance mode | $Distance_{\mu m} = Distance_{mm} \times 1000$; $Frames = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Converts the configured stacking distance from mm to micrometers, then divides it by the step distance. |
 | Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{S}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Divides the saved endpoint distance in motor steps by the calibration ($S$) to get micrometers, then uses the absolute distance between endpoints. |
+| Estimated sequence time | $Time = Frames \times (Shutter + SettlingTime + \frac{Steps_{shot}}{100})$ | Capture moves run at 100 steps/s. The estimate covers each capture frame, shutter pulse, settling time, and its calculated stepper move. |
 
 The calculated step length is shown in the status header and determines both the motor movement per shot and the total shot count.
 
