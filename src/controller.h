@@ -80,6 +80,7 @@ void controllerRecalculate();
 
 bool controllerStartRun();
 void controllerStop();
+void controllerResetToDefaults();
 bool controllerStartManualMove(int direction, const char *speedMode);
 bool controllerStartTravelTest(int direction, float distanceMm);
 void controllerCameraTest();

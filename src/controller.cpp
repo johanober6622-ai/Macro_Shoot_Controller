@@ -14,14 +14,17 @@ constexpr int MAX_DELAY = 3600;
 constexpr int SHUTTER_PULSE_MS = 500;
 constexpr int CAMERA_SETTLE_MS = 2000;
 constexpr int SLOW_SPEED = 100;
+constexpr int RETURN_SPEED = SLOW_SPEED * 4;
 constexpr int FAST_SPEED = 400;
 constexpr int TRAVEL_TEST_SPEED = 800;
 constexpr int LONG_MOVE_STEPS = 3200;
 constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 
-ControllerSettings settings = {
+const ControllerSettings DEFAULT_SETTINGS = {
     0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 160.0f, 4.0f, 50.0f, 50.0f,
     55, 49.5f, 10, 5, 22, 18, 0, false, OPTICAL_MACRO_LENS, 0};
+
+ControllerSettings settings = DEFAULT_SETTINGS;
 ControllerStatus status = {CONTROLLER_IDLE, false, 0, 0, 0, 0, 0, ""};
 ControllerState state = CONTROLLER_IDLE;
 unsigned long stateStartedAt = 0;
@@ -30,6 +33,7 @@ long returnSteps = 0;
 long manualMoveSteps = 0;
 long runTravelledSteps = 0;
 long runStartPositionSteps = 0;
+bool stopShouldReturnHome = false;
 
 int clampInt(int value, int minimum, int maximum)
 {
@@ -146,6 +150,14 @@ void finishRun()
     status.captureSequenceActive = false;
     status.remainingShots = 0;
     setState(CONTROLLER_IDLE);
+}
+
+void resetCaptureProgress()
+{
+    status.capturedFrames = 0;
+    status.currentShot = 0;
+    status.remainingShots = 0;
+    status.distanceTravelled = 0;
 }
 
 }
@@ -347,11 +359,35 @@ void controllerStop()
         return;
     }
 
+    bool wasCaptureSequence = status.captureSequenceActive;
     digitalWrite(CAMERA_TRIGGER_PIN, LOW);
-    if (state == CONTROLLER_MANUAL_MOVE || state == CONTROLLER_RUN_MOVE || state == CONTROLLER_RETURNING)
+
+    if (state == CONTROLLER_RETURNING)
+    {
+        // Already on its way back to the start position, let it finish.
+        resetCaptureProgress();
+        return;
+    }
+
+    if (state == CONTROLLER_MANUAL_MOVE || state == CONTROLLER_RUN_MOVE)
     {
         setupStop();
+        stopShouldReturnHome = wasCaptureSequence;
+        if (wasCaptureSequence) resetCaptureProgress();
         setState(CONTROLLER_STOPPING);
+    }
+    else if (wasCaptureSequence)
+    {
+        resetCaptureProgress();
+        long steps = runStartPositionSteps - getCurrentPositionInSteps();
+        if (steps == 0)
+        {
+            finishRun();
+        }
+        else
+        {
+            beginMove(steps, RETURN_SPEED, CONTROLLER_RETURNING);
+        }
     }
     else
     {
@@ -359,6 +395,14 @@ void controllerStop()
         status.captureSequenceActive = false;
         setState(CONTROLLER_IDLE);
     }
+}
+
+void controllerResetToDefaults()
+{
+    if (isBusy()) return;
+    settings = DEFAULT_SETTINGS;
+    resetCaptureProgress();
+    controllerRecalculate();
 }
 
 bool controllerStartManualMove(int direction, const char *speedMode)
@@ -369,12 +413,12 @@ bool controllerStartManualMove(int direction, const char *speedMode)
     long steps = settings.stepsPerShot;
     if (strcmp(speedMode, "fast") == 0)
     {
-        speed = FAST_SPEED;
+        speed = FAST_SPEED * 4;
         steps *= 40;
     }
     else if (strcmp(speedMode, "long") == 0)
     {
-        speed = FAST_SPEED;
+        speed = FAST_SPEED * 2;
         steps = LONG_MOVE_STEPS;
     }
 
@@ -434,7 +478,7 @@ void controllerSaveEndpointEnd()
     returnSteps = -endpointDistanceSteps;
     if (returnSteps != 0)
     {
-        beginMove(returnSteps, SLOW_SPEED, CONTROLLER_RETURNING);
+        beginMove(returnSteps, RETURN_SPEED, CONTROLLER_RETURNING);
     }
 }
 
@@ -466,29 +510,25 @@ void controllerTick()
         if (now - stateStartedAt >= SHUTTER_PULSE_MS)
         {
             digitalWrite(CAMERA_TRIGGER_PIN, LOW);
-            if (status.currentShot >= settings.totalShots - 1)
+            bool sequenceComplete = settings.stepsMode
+                ? status.currentShot >= settings.totalShots - 1
+                : status.currentShot >= settings.totalShots;
+            if (sequenceComplete)
             {
-                if (!settings.stepsMode)
+                status.remainingShots = 0;
+                returnSteps = runStartPositionSteps - getCurrentPositionInSteps();
+                if (returnSteps == 0)
                 {
-                    beginMove(-settings.stepsPerShot, SLOW_SPEED, CONTROLLER_RUN_MOVE);
+                    finishRun();
                 }
                 else
                 {
-                    status.remainingShots = 0;
-                    returnSteps = runStartPositionSteps - getCurrentPositionInSteps();
-                    if (returnSteps == 0)
-                    {
-                        finishRun();
-                    }
-                    else
-                    {
-                        beginMove(returnSteps, SLOW_SPEED, CONTROLLER_RETURNING);
-                    }
+                    beginMove(returnSteps, RETURN_SPEED, CONTROLLER_RETURNING);
                 }
             }
             else
             {
-                long moveSteps = settings.stepsMode ? nextEndpointMove() : -settings.stepsPerShot;
+                long moveSteps = settings.stepsMode ? nextEndpointMove() : settings.stepsPerShot;
                 beginMove(moveSteps, SLOW_SPEED, CONTROLLER_RUN_MOVE);
             }
         }
@@ -501,22 +541,7 @@ void controllerTick()
             status.currentShot++;
             status.remainingShots = settings.totalShots - status.currentShot;
             status.distanceTravelled = static_cast<int>(settings.stepDistance * status.currentShot);
-            if (!settings.stepsMode && status.currentShot >= settings.totalShots)
-            {
-                returnSteps = runStartPositionSteps - getCurrentPositionInSteps();
-                if (returnSteps == 0)
-                {
-                    finishRun();
-                }
-                else
-                {
-                    beginMove(returnSteps, SLOW_SPEED, CONTROLLER_RETURNING);
-                }
-            }
-            else
-            {
-                setState(CONTROLLER_WAIT_SETTLE);
-            }
+            setState(CONTROLLER_WAIT_SETTLE);
         }
         break;
 
@@ -540,8 +565,24 @@ void controllerTick()
         if (processMovement())
         {
             enableMotor(false);
-            status.captureSequenceActive = false;
-            setState(CONTROLLER_IDLE);
+            if (stopShouldReturnHome)
+            {
+                stopShouldReturnHome = false;
+                long steps = runStartPositionSteps - getCurrentPositionInSteps();
+                if (steps == 0)
+                {
+                    finishRun();
+                }
+                else
+                {
+                    beginMove(steps, RETURN_SPEED, CONTROLLER_RETURNING);
+                }
+            }
+            else
+            {
+                status.captureSequenceActive = false;
+                setState(CONTROLLER_IDLE);
+            }
         }
         break;
     }
