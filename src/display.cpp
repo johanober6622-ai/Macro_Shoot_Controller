@@ -38,7 +38,7 @@ void displayTick()
     display.drawString("Shots: " + String(status.currentShot) + "/" + String(settings.totalShots), 8, 64, 2);
     display.drawString("Remaining: " + String(status.remainingShots), 8, 90, 2);
     display.drawString("Distance: " + String(status.distanceTravelled), 8, 116, 2);
-    display.drawString("DoF: " + String(settings.depthOfField), 8, 142, 2);
+    display.drawString("DoF: " + String(settings.depthOfField) + " um", 8, 142, 2);
     display.drawString("Step: " + String(settings.stepDistance, 0) + " um", 8, 168, 2);
     display.drawString("Web: " + webServerAddress(), 8, 194, 2);
     if (status.error.length() > 0)

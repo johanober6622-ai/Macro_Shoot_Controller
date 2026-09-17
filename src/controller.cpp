@@ -22,7 +22,7 @@ constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 ControllerSettings settings = {
     0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 160.0f, 4.0f, 50.0f, 50.0f,
     55, 49.5f, 10, 5, 22, 18, false, OPTICAL_MACRO_LENS, 0};
-ControllerStatus status = {CONTROLLER_IDLE, 0, 0, 0, 0, ""};
+ControllerStatus status = {CONTROLLER_IDLE, false, 0, 0, 0, 0, ""};
 ControllerState state = CONTROLLER_IDLE;
 unsigned long stateStartedAt = 0;
 long endpointDistanceSteps = 0;
@@ -113,6 +113,7 @@ void finishWithError(const char *message)
 {
     digitalWrite(CAMERA_TRIGGER_PIN, LOW);
     enableMotor(false);
+    status.captureSequenceActive = false;
     status.error = message;
     setState(CONTROLLER_ERROR);
 }
@@ -127,6 +128,7 @@ void finishRun()
 {
     digitalWrite(CAMERA_TRIGGER_PIN, LOW);
     enableMotor(false);
+    status.captureSequenceActive = false;
     status.remainingShots = 0;
     setState(CONTROLLER_IDLE);
 }
@@ -315,6 +317,7 @@ bool controllerStartRun()
     returnSteps = 0;
     runTravelledSteps = 0;
     runStartPositionSteps = getCurrentPositionInSteps();
+    status.captureSequenceActive = true;
     triggerCamera();
     return true;
 }
@@ -323,6 +326,7 @@ void controllerStop()
 {
     if (!isBusy())
     {
+        status.captureSequenceActive = false;
         setState(CONTROLLER_IDLE);
         return;
     }
@@ -336,6 +340,7 @@ void controllerStop()
     else
     {
         enableMotor(false);
+        status.captureSequenceActive = false;
         setState(CONTROLLER_IDLE);
     }
 }
@@ -495,6 +500,7 @@ void controllerTick()
         if (processMovement())
         {
             enableMotor(false);
+            status.captureSequenceActive = false;
             setState(CONTROLLER_IDLE);
         }
         break;

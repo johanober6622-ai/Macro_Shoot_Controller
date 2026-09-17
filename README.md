@@ -59,13 +59,25 @@ The web interface updates every 500 ms and provides:
 - Sensor type, aperture, magnification, numerical aperture, tube length, focal length, and delay settings
 - Live state, remaining shots, distance travelled, calculated step length, and calculated steps per shot
 
-### Step Length And Overlap
+## Calculations
 
-The controller uses a step length equal to 90% of the calculated depth of field to create overlap between adjacent images:
+The controller calculates the capture spacing from the selected optical mode. In the table below, $M$ is magnification, $N$ is nominal aperture, $N_{eff}$ is effective aperture, $NA$ is numerical aperture, and $c$ is the sensor circle of confusion in mm.
 
-`Step length (&#956;m) = floor(Depth of field (&#956;m) x 0.90)`
+| Calculation | Formula used by the controller | Notes |
+| --- | --- | --- |
+| Macro lens magnification | $M = M_{macro}$ | Uses the entered macro-lens magnification. |
+| Microscope objective magnification | $M = M_{design} \times \frac{L_{actual} - 10}{L_{base} - 10}$ | The result is limited to $0.1$ through $100$. |
+| Stacked-lens magnification | $M = \frac{f_{rear}}{f_{front}}$ | Rear focal length divided by front focal length. |
+| Effective aperture: macro or stacked lenses | $N_{eff} = N \times (M + 1)$ | Uses the nominal aperture and calculated magnification. |
+| Effective aperture: microscope objective | $N_{eff} = \frac{M}{2 \times NA}$ | Uses the calculated objective magnification and numerical aperture. |
+| Circle of confusion | Full Frame: $c = 0.03$; APS-C: $c = 0.02$; Micro Four Thirds: $c = 0.015$ | Values are in mm. |
+| Depth of field | $DoF_{\mu m} = \frac{2 \times c \times N_{eff}}{M^2} \times 1000$ | Converted to an integer micrometer value and limited to $1$ through $1,000,000$. |
+| Step length | $Step_{\mu m} = \lfloor DoF_{\mu m} \times 0.90 \rfloor$ | Creates 10% overlap between adjacent focus positions. |
+| Motor steps per shot | $Steps_{shot} = \lfloor Step_{\mu m} \times Steps_{\mu m}^{-1} \rfloor$ | Limited to $1$ through $1,000,000$ motor steps. |
+| Shots: Stacking Distance mode | $Shots = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Uses the configured stacking distance. |
+| Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{Steps_{\mu m}^{-1}}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Uses the absolute distance between the saved endpoints. |
 
-This calculated step length is rounded down to a whole micrometer, shown in the status header, and used to calculate the motor steps per shot. The remaining 10% provides overlap between consecutive focus positions.
+The calculated step length is shown in the status header and determines both the motor movement per shot and the total shot count.
 
 ### Distance mode
 
