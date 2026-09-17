@@ -90,7 +90,8 @@ void updateShotCount()
     }
     else
     {
-        settings.totalShots = static_cast<int>(ceilf(static_cast<float>(settings.shootDistance) / settings.stepDistance));
+        float distanceMicrons = static_cast<float>(settings.shootDistance) * 1000.0f;
+        settings.totalShots = static_cast<int>(ceilf(distanceMicrons / settings.stepDistance));
     }
 }
 
@@ -150,7 +151,7 @@ void controllerBegin()
 void controllerRecalculate()
 {
     settings.macroMagnification = clampFloat(settings.macroMagnification, 0.1f, 20.0f);
-    settings.aperture = clampFloat(settings.aperture, 0.1f, 64.0f);
+    settings.aperture = clampFloat(settings.aperture, 0.1f, 22.0f);
     settings.numericalAperture = clampFloat(settings.numericalAperture, 0.01f, 1.0f);
     settings.objectiveBaseTubeLength = clampFloat(settings.objectiveBaseTubeLength, 10.01f, 1000.0f);
     settings.objectiveActualTubeLength = clampFloat(settings.objectiveActualTubeLength, 10.01f, 1000.0f);
@@ -206,7 +207,7 @@ const char *controllerStateName()
     case CONTROLLER_IDLE: return "idle";
     case CONTROLLER_MANUAL_MOVE: return "manual_move";
     case CONTROLLER_TRIGGER: return "trigger";
-    case CONTROLLER_WAIT_CAMERA: return "camera_wait";
+    case CONTROLLER_WAIT_CAMERA: return "Camera_Fired";
     case CONTROLLER_RUN_MOVE: return "moving";
     case CONTROLLER_WAIT_SETTLE: return "settling";
     case CONTROLLER_RETURNING: return "returning";
@@ -437,6 +438,7 @@ void controllerTick()
             enableMotor(false);
             endpointDistanceSteps += manualMoveSteps;
             status.endpointSteps = static_cast<int>(endpointDistanceSteps);
+            updateShotCount();
             setState(CONTROLLER_IDLE);
         }
         break;

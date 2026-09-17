@@ -26,7 +26,7 @@ void displayTick()
 
     const ControllerSettings &settings = controllerSettings();
     const ControllerStatus &status = controllerStatus();
-    String text = String(controllerStateName()) + ":" + status.remainingShots + ":" + String(settings.stepDistance, 0) + ":" + webServerAddress();
+    String text = String(controllerStateName()) + ":" + status.currentShot + ":" + status.remainingShots + ":" + settings.totalShots + ":" + String(settings.stepsPerShot) + ":" + webServerAddress();
     if (text == lastStatus) return;
     lastStatus = text;
 
@@ -35,11 +35,11 @@ void displayTick()
     display.drawString("MacroController", 8, 8, 2);
     display.setTextColor(TFT_WHITE, TFT_BLACK);
     display.drawString("State: " + String(controllerStateName()), 8, 38, 2);
-    display.drawString("Shots: " + String(status.currentShot) + "/" + String(settings.totalShots), 8, 64, 2);
-    display.drawString("Remaining: " + String(status.remainingShots), 8, 90, 2);
-    display.drawString("Distance: " + String(status.distanceTravelled), 8, 116, 2);
+    display.drawString("Capture Frames: " + String(status.currentShot) + "/" + String(settings.totalShots), 8, 64, 2);
+    display.drawString("Capture Frames Left: " + String(status.remainingShots), 8, 90, 2);
+    display.drawString("Distance Moved: " + String(status.distanceTravelled), 8, 116, 2);
     display.drawString("DoF: " + String(settings.depthOfField) + " um", 8, 142, 2);
-    display.drawString("Step: " + String(settings.stepDistance, 0) + " um", 8, 168, 2);
+    display.drawString("Stepper Steps/Captured Frame: " + String(settings.stepsPerShot), 8, 168, 2);
     display.drawString("Web: " + webServerAddress(), 8, 194, 2);
     if (status.error.length() > 0)
     {

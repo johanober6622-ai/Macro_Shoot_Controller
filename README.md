@@ -74,7 +74,7 @@ The controller calculates the capture spacing from the selected optical mode. In
 | Depth of field | $DoF_{\mu m} = \frac{2 \times c \times N_{eff}}{M^2} \times 1000$ | Converted to an integer micrometer value and limited to $1$ through $1,000,000$. |
 | Step length | $Step_{\mu m} = \lfloor DoF_{\mu m} \times 0.90 \rfloor$ | Creates 10% overlap between adjacent focus positions. |
 | Motor steps per shot | $Steps_{shot} = \lfloor Step_{\mu m} \times S \rfloor$ | Multiply the calculated step length in micrometers by the configured motor calibration ($S$, steps per micrometer). The result is limited to $1$ through $1,000,000$ motor steps. |
-| Shots: Stacking Distance mode | $Shots = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Uses the configured stacking distance. |
+| Capture frames: Stacking Distance mode | $Distance_{\mu m} = Distance_{mm} \times 1000$; $Frames = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Converts the configured stacking distance from mm to micrometers, then divides it by the step distance. |
 | Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{S}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Divides the saved endpoint distance in motor steps by the calibration ($S$) to get micrometers, then uses the absolute distance between endpoints. |
 
 The calculated step length is shown in the status header and determines both the motor movement per shot and the total shot count.
