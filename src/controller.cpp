@@ -20,8 +20,8 @@ constexpr int LONG_MOVE_STEPS = 3200;
 constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 
 ControllerSettings settings = {
-    0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 200.0f, 4.0f, 50.0f, 50.0f,
-    55, 1000, 5, 22, 18, false, OPTICAL_MACRO_LENS, 0};
+    0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 160.0f, 4.0f, 50.0f, 50.0f,
+    55, 49.5f, 10, 5, 22, 18, false, OPTICAL_MACRO_LENS, 0};
 ControllerStatus status = {CONTROLLER_IDLE, 0, 0, 0, 0, ""};
 ControllerState state = CONTROLLER_IDLE;
 unsigned long stateStartedAt = 0;
@@ -77,18 +77,20 @@ void updateShotCount()
     {
         settings.totalShots = 0;
         settings.stepsPerShot = 0;
+        settings.stepDistance = 0.0f;
         return;
     }
 
-    settings.stepsPerShot = clampInt(static_cast<int>(floorf(settings.depthOfField * settings.stepsPerMicron)), 1, 1000000);
+    settings.stepDistance = floorf(static_cast<float>(settings.depthOfField) * 0.9f);
+    settings.stepsPerShot = clampInt(static_cast<int>(floorf(settings.stepDistance * settings.stepsPerMicron)), 1, 1000000);
     if (settings.stepsMode)
     {
         float endpointMicrons = static_cast<float>(labs(endpointDistanceSteps)) / settings.stepsPerMicron;
-        settings.totalShots = static_cast<int>(ceilf(endpointMicrons / settings.depthOfField));
+        settings.totalShots = static_cast<int>(ceilf(endpointMicrons / settings.stepDistance));
     }
     else
     {
-        settings.totalShots = static_cast<int>(ceilf(static_cast<float>(settings.shootDistance) / settings.depthOfField));
+        settings.totalShots = static_cast<int>(ceilf(static_cast<float>(settings.shootDistance) / settings.stepDistance));
     }
 }
 
@@ -469,7 +471,7 @@ void controllerTick()
             enableMotor(false);
             status.currentShot++;
             status.remainingShots = settings.totalShots - status.currentShot;
-            status.distanceTravelled = settings.depthOfField * status.currentShot;
+            status.distanceTravelled = static_cast<int>(settings.stepDistance * status.currentShot);
             setState(CONTROLLER_WAIT_SETTLE);
         }
         break;

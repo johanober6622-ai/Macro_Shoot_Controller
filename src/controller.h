@@ -34,6 +34,7 @@ struct ControllerSettings {
     float reverseFrontFocalLength;
     float reverseRearFocalLength;
     int depthOfField;
+    float stepDistance;
     int shootDistance;
     int delaySeconds;
     int stepsPerShot;

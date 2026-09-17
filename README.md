@@ -57,11 +57,21 @@ The web interface updates every 500 ms and provides:
 - Start/stop mode, which calculates shots from recorded rail endpoints
 - Macro lens, objective lens, and reverse lens calculation modes
 - Sensor type, aperture, magnification, numerical aperture, tube length, focal length, and delay settings
-- Live state, remaining shots, distance travelled, depth of field, and calculated steps per shot
+- Live state, remaining shots, distance travelled, calculated step length, and calculated steps per shot
+
+### Step Length And Overlap
+
+The controller uses a step length equal to 90% of the calculated depth of field to create overlap between adjacent images:
+
+`Step length (&#956;m) = floor(Depth of field (&#956;m) x 0.90)`
+
+This calculated step length is rounded down to a whole micrometer, shown in the status header, and used to calculate the motor steps per shot. The remaining 10% provides overlap between consecutive focus positions.
 
 ### Distance mode
 
-Set the travel distance, calibration value in steps per micrometer, optical values, and delay. The controller calculates the number of shots and returns the rail to its starting position when the run finishes.
+Set the travel distance, calibration value in steps per &#956;m, optical values, and delay. The controller calculates the number of shots using a step length equal to 90% of the depth of field, then returns the rail to its starting position when the run finishes.
+
+Microscope objective mode defaults to an actual tube length of 160 mm. Adjust it when the measured tube length differs from the objective's marked base tube length.
 
 ### Start/stop mode
 
