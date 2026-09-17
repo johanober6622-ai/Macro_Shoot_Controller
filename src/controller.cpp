@@ -21,7 +21,7 @@ constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 
 ControllerSettings settings = {
     0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 160.0f, 4.0f, 50.0f, 50.0f,
-    55, 49.5f, 10, 5, 22, 18, false, OPTICAL_MACRO_LENS, 0};
+    55, 49.5f, 10, 5, 22, 18, 0, false, OPTICAL_MACRO_LENS, 0};
 ControllerStatus status = {CONTROLLER_IDLE, false, 0, 0, 0, 0, 0, ""};
 ControllerState state = CONTROLLER_IDLE;
 unsigned long stateStartedAt = 0;
@@ -78,6 +78,7 @@ void updateShotCount()
         settings.totalShots = 0;
         settings.stepsPerShot = 0;
         settings.stepDistance = 0.0f;
+        settings.estimatedSequenceSeconds = 0;
         return;
     }
 
@@ -93,6 +94,43 @@ void updateShotCount()
         float distanceMicrons = static_cast<float>(settings.shootDistance) * 1000.0f;
         settings.totalShots = static_cast<int>(ceilf(distanceMicrons / settings.stepDistance));
     }
+
+    if (settings.totalShots <= 0)
+    {
+        settings.estimatedSequenceSeconds = 0;
+        return;
+    }
+
+    int intervals = settings.totalShots - 1;
+    float moveSeconds = 0.0f;
+    if (settings.stepsMode)
+    {
+        long endpointSteps = labs(endpointDistanceSteps);
+        if (intervals > 0)
+        {
+            float averageMoveSteps = static_cast<float>(endpointSteps) / intervals;
+            moveSeconds = intervals * (averageMoveSteps < SLOW_SPEED
+                ? 2.0f * sqrtf(averageMoveSteps / SLOW_SPEED)
+                : averageMoveSteps / SLOW_SPEED + 1.0f);
+        }
+        moveSeconds += endpointSteps < SLOW_SPEED
+            ? 2.0f * sqrtf(static_cast<float>(endpointSteps) / SLOW_SPEED)
+            : static_cast<float>(endpointSteps) / SLOW_SPEED + 1.0f;
+    }
+    else
+    {
+        float shotMoveSeconds = settings.stepsPerShot < SLOW_SPEED
+            ? 2.0f * sqrtf(static_cast<float>(settings.stepsPerShot) / SLOW_SPEED)
+            : static_cast<float>(settings.stepsPerShot) / SLOW_SPEED + 1.0f;
+        long returnMoveSteps = static_cast<long>(settings.totalShots) * settings.stepsPerShot;
+        float returnMoveSeconds = returnMoveSteps < SLOW_SPEED
+            ? 2.0f * sqrtf(static_cast<float>(returnMoveSteps) / SLOW_SPEED)
+            : static_cast<float>(returnMoveSteps) / SLOW_SPEED + 1.0f;
+        moveSeconds = settings.totalShots * shotMoveSeconds + returnMoveSeconds;
+    }
+    settings.estimatedSequenceSeconds = static_cast<int>(ceilf(
+        settings.totalShots * (SHUTTER_PULSE_MS / 1000.0f) +
+        intervals * settings.delaySeconds + moveSeconds));
 }
 
 long nextEndpointMove()

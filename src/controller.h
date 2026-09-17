@@ -39,6 +39,7 @@ struct ControllerSettings {
     int delaySeconds;
     int stepsPerShot;
     int totalShots;
+    int estimatedSequenceSeconds;
     bool stepsMode;
     OpticalMode opticalMode;
     int sensorType;
