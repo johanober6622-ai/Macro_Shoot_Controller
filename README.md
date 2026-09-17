@@ -61,7 +61,7 @@ The web interface updates every 500 ms and provides:
 
 ## Calculations
 
-The controller calculates the capture spacing from the selected optical mode. In the table below, $M$ is magnification, $N$ is nominal aperture, $N_{eff}$ is effective aperture, $NA$ is numerical aperture, and $c$ is the sensor circle of confusion in mm.
+The controller calculates the capture spacing from the selected optical mode. In the table below, $M$ is magnification, $N$ is nominal aperture, $N_{eff}$ is effective aperture, $NA$ is numerical aperture, $c$ is the sensor circle of confusion in mm, and $S$ is the configured motor calibration in steps per micrometer.
 
 | Calculation | Formula used by the controller | Notes |
 | --- | --- | --- |
@@ -73,9 +73,9 @@ The controller calculates the capture spacing from the selected optical mode. In
 | Circle of confusion | Full Frame: $c = 0.03$; APS-C: $c = 0.02$; Micro Four Thirds: $c = 0.015$ | Values are in mm. |
 | Depth of field | $DoF_{\mu m} = \frac{2 \times c \times N_{eff}}{M^2} \times 1000$ | Converted to an integer micrometer value and limited to $1$ through $1,000,000$. |
 | Step length | $Step_{\mu m} = \lfloor DoF_{\mu m} \times 0.90 \rfloor$ | Creates 10% overlap between adjacent focus positions. |
-| Motor steps per shot | $Steps_{shot} = \lfloor Step_{\mu m} \times Steps_{\mu m}^{-1} \rfloor$ | Limited to $1$ through $1,000,000$ motor steps. |
+| Motor steps per shot | $Steps_{shot} = \lfloor Step_{\mu m} \times S \rfloor$ | Multiply the calculated step length in micrometers by the configured motor calibration ($S$, steps per micrometer). The result is limited to $1$ through $1,000,000$ motor steps. |
 | Shots: Stacking Distance mode | $Shots = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Uses the configured stacking distance. |
-| Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{Steps_{\mu m}^{-1}}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Uses the absolute distance between the saved endpoints. |
+| Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{S}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Divides the saved endpoint distance in motor steps by the calibration ($S$) to get micrometers, then uses the absolute distance between endpoints. |
 
 The calculated step length is shown in the status header and determines both the motor movement per shot and the total shot count.
 
