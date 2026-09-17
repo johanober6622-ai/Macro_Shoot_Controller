@@ -47,6 +47,7 @@ struct ControllerSettings {
 struct ControllerStatus {
     ControllerState state;
     bool captureSequenceActive;
+    int capturedFrames;
     int currentShot;
     int remainingShots;
     int distanceTravelled;
