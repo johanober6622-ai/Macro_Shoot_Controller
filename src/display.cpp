@@ -26,7 +26,7 @@ void displayTick()
 
     const ControllerSettings &settings = controllerSettings();
     const ControllerStatus &status = controllerStatus();
-    String text = String(controllerStateName()) + ":" + status.currentShot + ":" + status.remainingShots + ":" + settings.totalShots + ":" + String(settings.stepsPerShot) + ":" + webServerAddress();
+    String text = String(controllerStateName()) + ":" + status.currentShot + ":" + status.remainingShots + ":" + status.distanceTravelled + ":" + settings.totalShots + ":" + String(settings.stepsPerShot) + ":" + webServerAddress();
     if (text == lastStatus) return;
     lastStatus = text;
 
@@ -37,7 +37,7 @@ void displayTick()
     display.drawString("State: " + String(controllerStateName()), 8, 38, 2);
     display.drawString("Capture Frames: " + String(status.currentShot) + "/" + String(settings.totalShots), 8, 64, 2);
     display.drawString("Capture Frames Left: " + String(status.remainingShots), 8, 90, 2);
-    display.drawString("Distance Moved: " + String(status.distanceTravelled), 8, 116, 2);
+    display.drawString("Distance Moved: " + String(static_cast<float>(status.distanceTravelled) / 1000.0f, 2) + " mm", 8, 116, 2);
     display.drawString("DoF: " + String(settings.depthOfField) + " um", 8, 142, 2);
     display.drawString("Stepper Steps/Captured Frame: " + String(settings.stepsPerShot), 8, 168, 2);
     display.drawString("Web: " + webServerAddress(), 8, 194, 2);
