@@ -26,7 +26,7 @@ void displayTick()
 
     const ControllerSettings &settings = controllerSettings();
     const ControllerStatus &status = controllerStatus();
-    String text = String(controllerStateName()) + ":" + status.remainingShots + ":" + webServerAddress();
+    String text = String(controllerStateName()) + ":" + status.remainingShots + ":" + String(settings.stepDistance, 0) + ":" + webServerAddress();
     if (text == lastStatus) return;
     lastStatus = text;
 
@@ -39,10 +39,11 @@ void displayTick()
     display.drawString("Remaining: " + String(status.remainingShots), 8, 90, 2);
     display.drawString("Distance: " + String(status.distanceTravelled), 8, 116, 2);
     display.drawString("DoF: " + String(settings.depthOfField), 8, 142, 2);
-    display.drawString("Web: " + webServerAddress(), 8, 178, 2);
+    display.drawString("Step: " + String(settings.stepDistance, 0) + " um", 8, 168, 2);
+    display.drawString("Web: " + webServerAddress(), 8, 194, 2);
     if (status.error.length() > 0)
     {
         display.setTextColor(TFT_RED, TFT_BLACK);
-        display.drawString(status.error, 8, 204, 2);
+        display.drawString(status.error, 8, 220, 2);
     }
 }
