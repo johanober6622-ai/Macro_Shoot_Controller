@@ -455,15 +455,22 @@ void controllerTick()
             digitalWrite(CAMERA_TRIGGER_PIN, LOW);
             if (status.currentShot >= settings.totalShots - 1)
             {
-                status.remainingShots = 0;
-                returnSteps = runStartPositionSteps - getCurrentPositionInSteps();
-                if (returnSteps == 0)
+                if (!settings.stepsMode)
                 {
-                    finishRun();
+                    beginMove(-settings.stepsPerShot, SLOW_SPEED, CONTROLLER_RUN_MOVE);
                 }
                 else
                 {
-                    beginMove(returnSteps, SLOW_SPEED, CONTROLLER_RETURNING);
+                    status.remainingShots = 0;
+                    returnSteps = runStartPositionSteps - getCurrentPositionInSteps();
+                    if (returnSteps == 0)
+                    {
+                        finishRun();
+                    }
+                    else
+                    {
+                        beginMove(returnSteps, SLOW_SPEED, CONTROLLER_RETURNING);
+                    }
                 }
             }
             else
@@ -481,7 +488,22 @@ void controllerTick()
             status.currentShot++;
             status.remainingShots = settings.totalShots - status.currentShot;
             status.distanceTravelled = static_cast<int>(settings.stepDistance * status.currentShot);
-            setState(CONTROLLER_WAIT_SETTLE);
+            if (!settings.stepsMode && status.currentShot >= settings.totalShots)
+            {
+                returnSteps = runStartPositionSteps - getCurrentPositionInSteps();
+                if (returnSteps == 0)
+                {
+                    finishRun();
+                }
+                else
+                {
+                    beginMove(returnSteps, SLOW_SPEED, CONTROLLER_RETURNING);
+                }
+            }
+            else
+            {
+                setState(CONTROLLER_WAIT_SETTLE);
+            }
         }
         break;
 
