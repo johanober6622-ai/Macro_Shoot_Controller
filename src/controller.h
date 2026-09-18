@@ -34,6 +34,7 @@ struct ControllerSettings {
     float reverseFrontFocalLength;
     float reverseRearFocalLength;
     int depthOfField;
+    float stepFraction;
     float stepDistance;
     int shootDistance;
     int delaySeconds;
@@ -76,6 +77,7 @@ void controllerSetReverseRearFocalLength(float value);
 void controllerSetStepsMode(bool enabled);
 void controllerSetOpticalMode(OpticalMode mode);
 void controllerSetSensorType(int value);
+void controllerSetStepFraction(float value);
 void controllerRecalculate();
 
 bool controllerStartRun();

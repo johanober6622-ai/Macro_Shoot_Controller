@@ -53,11 +53,12 @@ The web interface updates every 500 ms and provides:
 - Start and stop controls for a stacking run
 - Camera trigger test
 - Slow step, fast, and long manual movement in both directions
-- Distance mode, which calculates shots from the configured travel distance
+- Distance mode, which calculates shots from the configured travel distance (up to 60 mm)
 - Start/stop mode, which calculates shots from recorded rail endpoints
 - Macro lens, objective lens, and reverse lens calculation modes
-- Sensor type, aperture, magnification, numerical aperture, tube length, focal length, and delay settings
+- Sensor type, aperture, magnification, numerical aperture, tube length, focal length, delay, and sequence step fraction of DoF settings
 - Live state, remaining shots, distance travelled, calculated step length, and calculated steps per shot
+- Camera Test and Reset to Defaults controls
 
 ## Calculations
 
@@ -71,9 +72,9 @@ The controller calculates the capture spacing from the selected optical mode. In
 | Effective aperture: macro or stacked lenses | $N_{eff} = N \times (M + 1)$ | Uses the nominal aperture and calculated magnification. |
 | Effective aperture: microscope objective | $N_{eff} = \frac{M}{2 \times NA}$ | Uses the calculated objective magnification and numerical aperture. |
 | Circle of confusion | Full Frame: $c = 0.03$; APS-C: $c = 0.02$; Micro Four Thirds: $c = 0.015$ | Values are in mm. |
-| Depth of field | $DoF_{\mu m} = \frac{2 \times c \times N_{eff}}{M^2} \times 1000$ | Converted to an integer micrometer value and limited to $1$ through $1,000,000$. |
-| Step length | $Step_{\mu m} = \lfloor DoF_{\mu m} \times 0.90 \rfloor$ | Creates 10% overlap between adjacent focus positions. |
-| Motor steps per shot | $Steps_{shot} = \lfloor Step_{\mu m} \times S \rfloor$ | Multiply the calculated step length in micrometers by the configured motor calibration ($S$, steps per micrometer). The result is limited to $1$ through $1,000,000$ motor steps. |
+| Depth of field | $DoF_{\mu m} = \frac{2 \times c \times N_{eff}}{M^2} \times 1000$ | Rounded to the nearest integer micrometer value and limited to $1$ through $1,000,000$. |
+| Motor steps per shot | $Steps_{shot} = round(DoF_{\mu m} \times F \times S)$ | $F$ is the configurable sequence step fraction of DoF (0.5-0.9, default 0.9). Rounded once to the nearest whole step and limited to $1$ through $1,000,000$ motor steps. |
+| Step length | $Step_{\mu m} = \frac{Steps_{shot}}{S}$ | The distance the calculated integer step count actually produces, kept consistent with the real carriage motion. |
 | Capture frames: Stacking Distance mode | $Distance_{\mu m} = Distance_{mm} \times 1000$; $Frames = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Converts the configured stacking distance from mm to micrometers, then divides it by the step distance. |
 | Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{S}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Divides the saved endpoint distance in motor steps by the calibration ($S$) to get micrometers, then uses the absolute distance between endpoints. |
 | Estimated sequence time | $Time = Frames \times (Shutter + SettlingTime + \frac{Steps_{shot}}{100})$ | Capture moves run at 100 steps/s. The estimate covers each capture frame, shutter pulse, settling time, and its calculated stepper move. |
@@ -82,9 +83,28 @@ The calculated step length is shown in the status header and determines both the
 
 ### Distance mode
 
-Set the travel distance, calibration value in steps per &#956;m, optical values, and delay. The controller calculates the number of shots using a step length equal to 90% of the depth of field, then returns the rail to its starting position when the run finishes.
+Set the travel distance, calibration value in steps per &#956;m, optical values, and delay. The controller calculates the number of shots using a step length equal to a configurable fraction of the depth of field (0.5-0.9, default 0.9), then returns the rail to its starting position when the run finishes.
 
 Microscope objective mode defaults to an actual tube length of 160 mm. Adjust it when the measured tube length differs from the objective's marked base tube length.
+
+```mermaid
+flowchart TD
+    A[Select Stacking Distance mode] --> B[Set Stacking Distance in mm]
+    B --> C[Set Optical Mode and its values]
+    C --> D[Set Steps / &#956;m calibration]
+    D --> E[Set Settling Time]
+    E --> F[Check Depth of Field, Step Length, and Total Capture Frames]
+    F --> G{Values look correct?}
+    G -- No --> C
+    G -- Yes --> H[Clear the rail and camera path]
+    H --> I[Select Start Capture Sequence]
+    I --> J[Controller captures a frame, moves, settles, repeats]
+    J --> K{Sequence finished normally?}
+    K -- Yes --> L[Rail returns to start automatically]
+    K -- No, user selects Stop --> M[Rail decelerates, then returns to start]
+    L --> N[Status panel resets, ready for next run]
+    M --> N
+```
 
 ### Start/stop mode
 
@@ -94,6 +114,27 @@ Microscope objective mode defaults to an actual tube length of 160 mm. Adjust it
 4. Jog to the second endpoint.
 5. Select **Save end + return**. The controller records the travel and returns to the start.
 6. Start the run.
+
+```mermaid
+flowchart TD
+    A[Select Start / Stop mode] --> B[Jog to the first endpoint]
+    B --> C[Select Save Start]
+    C --> D[Jog to the second endpoint]
+    D --> E[Select Save End + Return]
+    E --> F[Rail returns to the saved start position]
+    F --> G[Check recorded steps and Capture Frames]
+    G --> H{Values look correct?}
+    H -- No --> I[Select Clear, then repeat from the first endpoint]
+    I --> B
+    H -- Yes --> J[Clear the rail and camera path]
+    J --> K[Select Start Capture Sequence]
+    K --> L[Controller captures a frame, moves, settles, repeats]
+    L --> M{Sequence finished normally?}
+    M -- Yes --> N[Rail returns to the saved start position automatically]
+    M -- No, user selects Stop --> O[Rail decelerates, then returns to the saved start position]
+    N --> P[Status panel resets, ready for next run]
+    O --> P
+```
 
 ## Operating checklist
 

@@ -8,7 +8,7 @@ constexpr uint8_t MOTOR_STEP_PIN = 23;
 constexpr uint8_t MOTOR_DIRECTION_PIN = 18;
 constexpr uint8_t MOTOR_ENABLE_PIN = 19;
 constexpr int MIN_DISTANCE = 0;
-constexpr int MAX_DISTANCE = 5000;
+constexpr int MAX_DISTANCE = 60;
 constexpr int MIN_DELAY = 0;
 constexpr int MAX_DELAY = 3600;
 constexpr int SHUTTER_PULSE_MS = 500;
@@ -22,7 +22,7 @@ constexpr float SENSOR_CIRCLE_OF_CONFUSION[] = {0.03f, 0.02f, 0.015f};
 
 const ControllerSettings DEFAULT_SETTINGS = {
     0.4f, 2.1f, 2.1f, 5.6f, 11.2f, 0.1f, 160.0f, 160.0f, 4.0f, 50.0f, 50.0f,
-    55, 49.5f, 10, 5, 22, 18, 0, false, OPTICAL_MACRO_LENS, 0};
+    55, 0.9f, 49.5f, 10, 5, 22, 18, 0, false, OPTICAL_MACRO_LENS, 0};
 
 ControllerSettings settings = DEFAULT_SETTINGS;
 ControllerStatus status = {CONTROLLER_IDLE, false, 0, 0, 0, 0, 0, ""};
@@ -47,6 +47,12 @@ float clampFloat(float value, float minimum, float maximum)
     if (value < minimum) return minimum;
     if (value > maximum) return maximum;
     return value;
+}
+
+float clampStepFraction(float value)
+{
+    float snapped = roundf(clampFloat(value, 0.5f, 0.9f) * 10.0f) / 10.0f;
+    return snapped;
 }
 
 bool isBusy()
@@ -86,8 +92,10 @@ void updateShotCount()
         return;
     }
 
-    settings.stepDistance = floorf(static_cast<float>(settings.depthOfField) * 0.9f);
-    settings.stepsPerShot = clampInt(static_cast<int>(floorf(settings.stepDistance * settings.stepsPerMicron)), 1, 1000000);
+    // Round to the nearest whole step once (instead of two compounding floor() calls),
+    // then report the distance that integer step count actually produces.
+    settings.stepsPerShot = clampInt(lroundf(static_cast<float>(settings.depthOfField) * settings.stepFraction * settings.stepsPerMicron), 1, 1000000);
+    settings.stepDistance = static_cast<float>(settings.stepsPerShot) / settings.stepsPerMicron;
     if (settings.stepsMode)
     {
         float endpointMicrons = static_cast<float>(labs(endpointDistanceSteps)) / settings.stepsPerMicron;
@@ -188,6 +196,7 @@ void controllerRecalculate()
     settings.stepsPerMicron = clampFloat(settings.stepsPerMicron, 0.01f, 100.0f);
     settings.shootDistance = clampInt(settings.shootDistance, MIN_DISTANCE, MAX_DISTANCE);
     settings.delaySeconds = clampInt(settings.delaySeconds, MIN_DELAY, MAX_DELAY);
+    settings.stepFraction = clampStepFraction(settings.stepFraction);
 
     float calculationMagnification = settings.macroMagnification;
     if (settings.opticalMode == OPTICAL_OBJECTIVE_LENS)
@@ -211,7 +220,7 @@ void controllerRecalculate()
     float dof = 2.0f * circleOfConfusion * settings.effectiveAperture /
                 (calculationMagnification * calculationMagnification) * 1000.0f;
 
-    settings.depthOfField = clampInt(static_cast<int>(dof), 1, 1000000);
+    settings.depthOfField = clampInt(lroundf(dof), 1, 1000000);
     updateShotCount();
     status.error = "";
 }
@@ -324,6 +333,12 @@ void controllerSetOpticalMode(OpticalMode mode)
 void controllerSetSensorType(int value)
 {
     settings.sensorType = value;
+    controllerRecalculate();
+}
+
+void controllerSetStepFraction(float value)
+{
+    settings.stepFraction = value;
     controllerRecalculate();
 }
 
