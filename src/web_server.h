@@ -6,5 +6,9 @@
 void webServerBegin();
 void webServerTick();
 String webServerAddress();
+bool webServerIsAccessPoint();
+bool webServerHasClient();
+String webServerApSsid();
+String webServerApPassword();
 
 #endif

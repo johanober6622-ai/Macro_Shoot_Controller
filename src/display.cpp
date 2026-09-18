@@ -26,7 +26,10 @@ void displayTick()
 
     const ControllerSettings &settings = controllerSettings();
     const ControllerStatus &status = controllerStatus();
-    String text = String(controllerStateName()) + ":" + status.capturedFrames + ":" + status.remainingShots + ":" + status.distanceTravelled + ":" + settings.totalShots + ":" + String(settings.stepsPerShot) + ":" + webServerAddress();
+    bool awaitingConnection = webServerIsAccessPoint() && !webServerHasClient();
+    String text = awaitingConnection
+        ? "waiting:" + webServerAddress()
+        : String(controllerStateName()) + ":" + status.capturedFrames + ":" + status.remainingShots + ":" + status.distanceTravelled + ":" + settings.totalShots + ":" + String(settings.stepsPerShot) + ":" + webServerAddress();
     if (text == lastStatus) return;
     lastStatus = text;
 
@@ -34,16 +37,30 @@ void displayTick()
     display.setTextColor(TFT_CYAN, TFT_BLACK);
     display.drawString("MacroController", 8, 8, 2);
     display.setTextColor(TFT_WHITE, TFT_BLACK);
+
+    if (awaitingConnection)
+    {
+        display.setTextColor(TFT_YELLOW, TFT_BLACK);
+        display.drawString("No Wi-Fi network found", 8, 38, 2);
+        display.setTextColor(TFT_WHITE, TFT_BLACK);
+        display.drawString("Connect to the fallback access point:", 8, 64, 2);
+        display.drawString("SSID: " + webServerApSsid(), 8, 90, 2);
+        display.drawString("Password: " + webServerApPassword(), 8, 116, 2);
+        display.drawString("Address: " + webServerAddress(), 8, 142, 2);
+        return;
+    }
+
     display.drawString("State: " + String(controllerStateName()), 8, 38, 2);
     display.drawString("Captured Frames: " + String(status.capturedFrames) + "/" + String(settings.totalShots), 8, 64, 2);
     display.drawString("Capture Frames Left: " + String(status.remainingShots), 8, 90, 2);
     display.drawString("Distance Moved: " + String(static_cast<float>(status.distanceTravelled) / 1000.0f, 2) + " mm", 8, 116, 2);
     display.drawString("DoF: " + String(settings.depthOfField) + " um", 8, 142, 2);
-    display.drawString("Stepper Steps/Captured Frame: " + String(settings.stepsPerShot), 8, 168, 2);
-    display.drawString("Web: " + webServerAddress(), 8, 194, 2);
+    display.drawString("Step Length: " + String(settings.stepDistance, 0) + " um", 8, 168, 2);
+    display.drawString("Stepper Steps/Captured Frame: " + String(settings.stepsPerShot), 8, 194, 2);
+    display.drawString("Web: " + webServerAddress(), 8, 220, 2);
     if (status.error.length() > 0)
     {
         display.setTextColor(TFT_RED, TFT_BLACK);
-        display.drawString(status.error, 8, 220, 2);
+        display.drawString(status.error, 8, 246, 2);
     }
 }

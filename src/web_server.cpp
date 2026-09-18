@@ -252,3 +252,23 @@ String webServerAddress()
 {
     return address;
 }
+
+bool webServerIsAccessPoint()
+{
+    return accessPointMode;
+}
+
+bool webServerHasClient()
+{
+    return accessPointMode ? WiFi.softAPgetStationNum() > 0 : WiFi.status() == WL_CONNECTED;
+}
+
+String webServerApSsid()
+{
+    return String(WIFI_AP_SSID);
+}
+
+String webServerApPassword()
+{
+    return String(WIFI_AP_PASSWORD);
+}
