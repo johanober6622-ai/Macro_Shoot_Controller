@@ -85,6 +85,7 @@ void controllerStop();
 void controllerResetToDefaults();
 bool controllerStartManualMove(int direction, const char *speedMode);
 bool controllerStartTravelTest(int direction, float distanceMm);
+bool controllerCalibrateStepsPerMicron(float measuredDistanceMm);
 void controllerCameraTest();
 void controllerClearEndpoints();
 void controllerSaveEndpointStart();

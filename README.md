@@ -75,9 +75,9 @@ The controller calculates the capture spacing from the selected optical mode. In
 | Depth of field | $DoF_{\mu m} = \frac{2 \times c \times N_{eff}}{M^2} \times 1000$ | Rounded to the nearest integer micrometer value and limited to $1$ through $1,000,000$. |
 | Motor steps per shot | $Steps_{shot} = round(DoF_{\mu m} \times F \times S)$ | $F$ is the configurable sequence step fraction of DoF (0.5-0.9, default 0.9). Rounded once to the nearest whole step and limited to $1$ through $1,000,000$ motor steps. |
 | Step length | $Step_{\mu m} = \frac{Steps_{shot}}{S}$ | The distance the calculated integer step count actually produces, kept consistent with the real carriage motion. |
-| Capture frames: Stacking Distance mode | $Distance_{\mu m} = Distance_{mm} \times 1000$; $Frames = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil$ | Converts the configured stacking distance from mm to micrometers, then divides it by the step distance. |
-| Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{S}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Divides the saved endpoint distance in motor steps by the calibration ($S$) to get micrometers, then uses the absolute distance between endpoints. |
-| Estimated sequence time | $Time = Frames \times (Shutter + SettlingTime + \frac{Steps_{shot}}{100})$ | Capture moves run at 100 steps/s. The estimate covers each capture frame, shutter pulse, settling time, and its calculated stepper move. |
+| Capture frames: Stacking Distance mode | $Distance_{\mu m} = Distance_{mm} \times 1000$; $Frames = \lceil \frac{Distance_{\mu m}}{Step_{\mu m}} \rceil + 1$ | Converts the configured stacking distance from mm to micrometers, divides it by the step distance, then adds 1 to include the starting frame. |
+| Shots: Start/Stop mode | $Endpoint_{\mu m} = \frac{|Endpoint_{steps}|}{S}$; $Shots = \lceil \frac{Endpoint_{\mu m}}{Step_{\mu m}} \rceil$ | Divides the saved endpoint distance in motor steps by the calibration ($S$) to get micrometers, then uses the absolute distance between endpoints. Already includes the starting frame. |
+| Estimated sequence time | $Time = Frames \times (Shutter + SettlingTime) + (Frames - 1) \times \frac{Steps_{shot}}{100}$ | Capture moves run at 100 steps/s. Every frame includes a shutter pulse and settling time; moves only occur between frames ($Frames - 1$ of them). |
 
 The calculated step length is shown in the status header and determines both the motor movement per shot and the total shot count.
 

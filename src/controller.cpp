@@ -1,5 +1,6 @@
 #include "controller.h"
 #include "SpeedyStepper.h"
+#include <Preferences.h>
 #include <cstring>
 
 namespace {
@@ -33,7 +34,25 @@ long returnSteps = 0;
 long manualMoveSteps = 0;
 long runTravelledSteps = 0;
 long runStartPositionSteps = 0;
+long lastTravelTestSteps = 0;
 bool stopShouldReturnHome = false;
+Preferences preferences;
+constexpr const char *PREFS_NAMESPACE = "macroctrl";
+constexpr const char *PREFS_STEPS_PER_UM_KEY = "stepsPerUm";
+
+void loadCalibration()
+{
+    preferences.begin(PREFS_NAMESPACE, true);
+    settings.stepsPerMicron = preferences.getFloat(PREFS_STEPS_PER_UM_KEY, DEFAULT_SETTINGS.stepsPerMicron);
+    preferences.end();
+}
+
+void saveCalibration()
+{
+    preferences.begin(PREFS_NAMESPACE, false);
+    preferences.putFloat(PREFS_STEPS_PER_UM_KEY, settings.stepsPerMicron);
+    preferences.end();
+}
 
 int clampInt(int value, int minimum, int maximum)
 {
@@ -103,8 +122,9 @@ void updateShotCount()
     }
     else
     {
+        // +1 counts the starting frame in addition to the frame taken after each move.
         float distanceMicrons = static_cast<float>(settings.shootDistance) * 1000.0f;
-        settings.totalShots = static_cast<int>(ceilf(distanceMicrons / settings.stepDistance));
+        settings.totalShots = static_cast<int>(ceilf(distanceMicrons / settings.stepDistance)) + 1;
     }
 
     if (settings.totalShots <= 0)
@@ -114,10 +134,10 @@ void updateShotCount()
     }
 
     float moveSecondsPerFrame = static_cast<float>(settings.stepsPerShot) / SLOW_SPEED;
-    settings.estimatedSequenceSeconds = static_cast<int>(ceilf(settings.totalShots * (
-        SHUTTER_PULSE_MS / 1000.0f +
-        settings.delaySeconds +
-        moveSecondsPerFrame)));
+    int moveCount = settings.totalShots - 1;
+    settings.estimatedSequenceSeconds = static_cast<int>(ceilf(
+        settings.totalShots * (SHUTTER_PULSE_MS / 1000.0f + settings.delaySeconds) +
+        moveCount * moveSecondsPerFrame));
 }
 
 long nextEndpointMove()
@@ -179,6 +199,7 @@ void controllerBegin()
     digitalWrite(CAMERA_TRIGGER_PIN, LOW);
     enableMotor(false);
     connectToPins(MOTOR_STEP_PIN, MOTOR_DIRECTION_PIN);
+    loadCalibration();
     controllerRecalculate();
 }
 
@@ -268,6 +289,7 @@ void controllerSetStepsPerMicron(float value)
 {
     settings.stepsPerMicron = value;
     controllerRecalculate();
+    saveCalibration();
 }
 
 void controllerSetMagnification(float value)
@@ -418,6 +440,7 @@ void controllerResetToDefaults()
     settings = DEFAULT_SETTINGS;
     resetCaptureProgress();
     controllerRecalculate();
+    saveCalibration();
 }
 
 bool controllerStartManualMove(int direction, const char *speedMode)
@@ -455,8 +478,18 @@ bool controllerStartTravelTest(int direction, float distanceMm)
     long steps = lroundf(distanceMm * 1000.0f * settings.stepsPerMicron);
     if (steps <= 0) return false;
 
+    lastTravelTestSteps = steps;
     manualMoveSteps = direction < 0 ? -steps : steps;
     beginMove(manualMoveSteps, TRAVEL_TEST_SPEED, CONTROLLER_MANUAL_MOVE);
+    return true;
+}
+
+bool controllerCalibrateStepsPerMicron(float measuredDistanceMm)
+{
+    if (isBusy() || lastTravelTestSteps <= 0 || measuredDistanceMm <= 0.0f || !isfinite(measuredDistanceMm)) return false;
+    settings.stepsPerMicron = static_cast<float>(lastTravelTestSteps) / (measuredDistanceMm * 1000.0f);
+    controllerRecalculate();
+    saveCalibration();
     return true;
 }
 
@@ -525,9 +558,7 @@ void controllerTick()
         if (now - stateStartedAt >= SHUTTER_PULSE_MS)
         {
             digitalWrite(CAMERA_TRIGGER_PIN, LOW);
-            bool sequenceComplete = settings.stepsMode
-                ? status.currentShot >= settings.totalShots - 1
-                : status.currentShot >= settings.totalShots;
+            bool sequenceComplete = status.currentShot >= settings.totalShots - 1;
             if (sequenceComplete)
             {
                 status.remainingShots = 0;
