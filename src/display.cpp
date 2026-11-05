@@ -46,7 +46,7 @@ void displayTick()
         display.drawString("Connect to the fallback access point:", 8, 64, 2);
         display.drawString("SSID: " + webServerApSsid(), 8, 90, 2);
         display.drawString("Password: " + webServerApPassword(), 8, 116, 2);
-        display.drawString("Address: " + webServerAddress(), 8, 142, 2);
+        display.drawString("AP:" + webServerAddress(), 8, 142, 2);
         return;
     }
 
@@ -57,7 +57,7 @@ void displayTick()
     display.drawString("DoF: " + String(settings.depthOfField) + " um", 8, 142, 2);
     display.drawString("Step Length: " + String(settings.stepDistance, 0) + " um", 8, 168, 2);
     display.drawString("Stepper Steps/Captured Frame: " + String(settings.stepsPerShot), 8, 194, 2);
-    display.drawString("Web: " + webServerAddress(), 8, 220, 2);
+    display.drawString((webServerIsAccessPoint() ? "AP:" : "wifi:") + webServerAddress(), 8, 220, 2);
     if (status.error.length() > 0)
     {
         display.setTextColor(TFT_RED, TFT_BLACK);

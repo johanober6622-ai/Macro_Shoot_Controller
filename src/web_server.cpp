@@ -157,7 +157,7 @@ void webServerBegin()
     bool connected = false;
 
     Serial.println("Wi-Fi: connecting to " + String(WIFI_SSID));
-    if (!WIFI_FORCE_AP && String(WIFI_SSID) != "YOUR_WIFI_NAME")
+    if (!WIFI_USE_AP && String(WIFI_SSID) != "YOUR_WIFI_NAME")
     {
 #if WIFI_USE_STATIC_IP
         IPAddress ip, gateway, subnet, dns1, dns2;

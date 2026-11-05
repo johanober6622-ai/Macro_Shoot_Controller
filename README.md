@@ -38,7 +38,7 @@ The firmware starts the web server during boot and prints its URL to the serial 
 
 By default, the controller joins the configured Wi-Fi network using DHCP. Optional static-IP settings are available in `src/secrets.h`.
 
-If the station connection fails, or `WIFI_FORCE_AP` is set to `1`, the controller starts a fallback access point:
+If the station connection fails, or `WIFI_USE_AP` is set to `1`, the controller starts a fallback access point:
 
 - SSID: `MacroController`
 - Password: `macrocontrol`
